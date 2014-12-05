@@ -67,12 +67,20 @@ public class Test {
 			}
 			else {
 				for (ResultSinkInfo sink : results.getResults().keySet()) {
-					print("Found a flow to sink " + sink + ", from the following sources:");
+					/*print("Found a flow to sink " + sink + ", from the following sources:");
 					for (ResultSourceInfo source : results.getResults().get(sink)) {
 						print("\t- " + source.getSource() + " (in "
 								+ cfg.getMethodOf(source.getSource()).getSignature()  + ")");
 						if (source.getPath() != null && !source.getPath().isEmpty())
 							print("\t\ton Path " + source.getPath());
+					}*/
+					
+					print("Found a flow to sink " + sink + ", from the following sources:");
+					for (ResultSourceInfo source : results.getResults().get(sink)) {
+						print("\t- " + source + " (in "
+								+ cfg.getMethodOf(source.getSource()).getSignature()  + ")");
+						if (source.getPath() != null && !source.getPath().isEmpty())
+							print("\t\ton Path " + source.printPath());
 					}
 				}
 			}
