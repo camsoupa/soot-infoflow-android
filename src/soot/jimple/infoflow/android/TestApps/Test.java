@@ -17,6 +17,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.xmlpull.v1.XmlPullParserException;
 
+import soot.jimple.Stmt;
 import soot.jimple.infoflow.IInfoflow.CallgraphAlgorithm;
 import soot.jimple.infoflow.android.AndroidSourceSinkManager.LayoutMatchingMode;
 import soot.jimple.infoflow.android.SetupApplication;
@@ -43,13 +45,15 @@ import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.taintWrappers.EasyTaintWrapper;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.jimple.infoflow.taintWrappers.TaintWrapperSet;
+import soot.tagkit.LineNumberTag;
+import soot.tagkit.SourceFileTag;
 
 public class Test {
 	
 	private static final class MyResultsAvailableHandler implements
 			ResultsAvailableHandler {
 		private final BufferedWriter wr;
-
+		
 		private MyResultsAvailableHandler() {
 			this.wr = null;
 		}
@@ -66,22 +70,108 @@ public class Test {
 				print("No results found.");
 			}
 			else {
+				ArrayList<String> sexpressions = new ArrayList<String>();
+				StringBuilder sexpression = new StringBuilder();
+				
 				for (ResultSinkInfo sink : results.getResults().keySet()) {
-					/*print("Found a flow to sink " + sink + ", from the following sources:");
-					for (ResultSourceInfo source : results.getResults().get(sink)) {
-						print("\t- " + source.getSource() + " (in "
-								+ cfg.getMethodOf(source.getSource()).getSignature()  + ")");
-						if (source.getPath() != null && !source.getPath().isEmpty())
-							print("\t\ton Path " + source.getPath());
-					}*/
 					
-					print("Found a flow to sink " + sink + ", from the following sources:");
+					
+					print("Found a flow to sink " + sink + " (in " + cfg.getMethodOf(sink.getSink()).getSignature() + "from the following sources:");
 					for (ResultSourceInfo source : results.getResults().get(sink)) {
+						
 						print("\t- " + source + " (in "
 								+ cfg.getMethodOf(source.getSource()).getSignature()  + ")");
+						
 						if (source.getPath() != null && !source.getPath().isEmpty())
 							print("\t\ton Path " + source.printPath());
+						
+						// Create s-expression
+						String className;
+						String statement;
+						
+						// Add source
+						sexpression.append("(\"");
+						className = cfg.getMethodOf(source.getSource()).getDeclaringClass().getName();
+						sexpression.append(className);
+//						sexpression.append("(METHOD: \"");
+//						methodName = cfg.getMethodOf(source.getSource()).getName();
+//						sexpression.append(methodName);
+						
+						sexpression.append("\" \"");
+						statement = source.getSource().toString();
+						sexpression.append(statement);
+						sexpression.append("\" " + source.getSourceLineNumber());
+						sexpression.append(")\n\t\t");
+						
+						// Add path
+						List<Stmt> path = source.getPath();
+						int previousLineNumber = source.getSourceLineNumber();
+						if (path != null && !path.isEmpty()) {
+							for(int i = 0; i < path.size(); i ++) {
+								
+								sexpression.append("(");
+								
+								// Path class. 
+								sexpression.append("\"");
+								className = cfg.getMethodOf(path.get(i)).getDeclaringClass().getName();
+								sexpression.append(className);
+								
+								// Path statement
+								sexpression.append("\" \"");
+								sexpression.append(path.get(i).toString());
+								
+								// Path line number. 
+								sexpression.append("\" ");
+								if (path.get(i).getJavaSourceStartLineNumber() != -1) {
+									sexpression.append(path.get(i).getJavaSourceStartLineNumber());
+									previousLineNumber = path.get(i).getJavaSourceStartLineNumber();
+								}
+								else {
+									sexpression.append(previousLineNumber);
+								}
+								
+								sexpression.append(")\n\t\t");
+							}
+						}
+						
+						// Add sink
+						sexpression.append("(\"");
+						className = cfg.getMethodOf(sink.getSink()).getDeclaringClass().getName();
+						sexpression.append(className);
+//						sexpression.append("(METHOD: \"");
+//						methodName = cfg.getMethodOf(sink.getSink()).getName();
+//						sexpression.append(methodName);
+						
+						sexpression.append("\" \"");
+						statement = sink.getSink().toString();
+						sexpression.append(statement);
+						
+						sexpression.append("\" " + sink.getSinkLineNumber());
+						sexpression.append(")");
+						// Add to list
+						sexpressions.add(sexpression.toString());
+						sexpression = new StringBuilder();
 					}
+					for(int i = 0; i < sexpressions.size(); i++) {
+						print(sexpressions.get(i));
+					}
+					
+					print("");
+				}
+				
+				try {
+					PrintWriter writer = new PrintWriter("sexpressions/" + appName + ".txt", "UTF-8");
+					writer.println("[");
+					for(int i = 0; i < sexpressions.size(); i++) {
+						writer.println("\t[");
+						writer.println("\t\t" + sexpressions.get(i));
+						writer.println("\t]");
+					}
+					writer.println("]");
+					writer.close();
+				}
+				catch(Exception e) {
+					
 				}
 			}
 		}
@@ -99,6 +189,7 @@ public class Test {
 	}
 	
 	static String command;
+	static String appName;
 	static boolean generate = false;
 	
 	private static int timeout = -1;
@@ -163,6 +254,17 @@ public class Test {
 		List<String> apkFiles = new ArrayList<String>();
 		File apkFile = new File(args[0]);
 		String extension = apkFile.getName().substring(apkFile.getName().lastIndexOf("."));
+		
+		int i = 0;
+		boolean found = false;
+		String[] appArg = args[0].split("[/.]");
+		while(!found) {
+			if(appArg[i].equalsIgnoreCase("apk")) found = true;
+			else i++;
+		}
+		appName = appArg[--i];
+		
+		
 		if (apkFile.isDirectory()) {
 			String[] dirFiles = apkFile.list(new FilenameFilter() {
 			
