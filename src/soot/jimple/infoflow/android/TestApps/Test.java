@@ -99,6 +99,9 @@ public class Test {
 						
 						sexpression.append("\" \"");
 						statement = source.getSource().toString();
+						if (statement.contains("\"")) {
+							statement = statement.replace("\"", "\\\"");
+						}
 						sexpression.append(statement);
 						sexpression.append("\" " + source.getSourceLineNumber());
 						sexpression.append(")\n\t\t");
@@ -118,7 +121,8 @@ public class Test {
 								
 								// Path statement
 								sexpression.append("\" \"");
-								sexpression.append(path.get(i).toString());
+								String stmt = path.get(i).toString().replace("\"", "\\\"");
+								sexpression.append(stmt);
 								
 								// Path line number. 
 								sexpression.append("\" ");
@@ -143,7 +147,7 @@ public class Test {
 //						sexpression.append(methodName);
 						
 						sexpression.append("\" \"");
-						statement = sink.getSink().toString();
+						statement = sink.getSink().toString().replace("\"", "\\\"");
 						sexpression.append(statement);
 						
 						sexpression.append("\" " + sink.getSinkLineNumber());
@@ -232,6 +236,7 @@ public class Test {
 			printUsage();	
 			return;
 		}
+		System.out.println("ran from: " + System.getProperty("user.dir") + " with args: [" + String.join(", ", args) + "]");
 		//start with cleanup:
 		File outputDir = new File("JimpleOutput");
 		if (outputDir.isDirectory()){
@@ -612,7 +617,7 @@ public class Test {
 				taintWrapper = easyTaintWrapper;
 			}
 			app.setTaintWrapper(taintWrapper);
-			app.calculateSourcesSinksEntrypoints("SourcesAndSinks.txt");
+			app.calculateSourcesSinksEntrypoints("../../needle/data/sinks_list", "../../needle/data/sources_list");
 			
 			if (DEBUG) {
 				app.printEntrypoints();

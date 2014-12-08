@@ -61,13 +61,17 @@ public class AndroidMethod extends SootMethodAndClass{
 		
 		// SHARED
 		AUDIO,
+		IO,
+		STORAGE,
+		UI,
 		SMS_MMS,
 		CONTACT_INFORMATION,
 		CALENDAR_INFORMATION,
 		SYSTEM_SETTINGS,
 		IMAGE,
 		BROWSER_INFORMATION,
-		NFC
+		NFC,
+		CRYPTO
 	}
 
 	private final Set<String> permissions;

@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 
+import com.google.common.collect.Sets;
+
 import soot.Main;
 import soot.PackManager;
 import soot.Scene;
@@ -35,6 +37,8 @@ import soot.jimple.infoflow.IInfoflow.CallgraphAlgorithm;
 import soot.jimple.infoflow.Infoflow;
 import soot.jimple.infoflow.android.AndroidSourceSinkManager.LayoutMatchingMode;
 import soot.jimple.infoflow.android.data.AndroidMethod;
+import soot.jimple.infoflow.android.data.AndroidMethod.CATEGORY;
+import soot.jimple.infoflow.android.data.parsers.CategorizedAndroidSourceSinkParser;
 import soot.jimple.infoflow.android.data.parsers.PermissionMethodParser;
 import soot.jimple.infoflow.android.manifest.ProcessManifest;
 import soot.jimple.infoflow.android.resources.ARSCFileParser;
@@ -233,6 +237,19 @@ public class SetupApplication {
 			if(am.isSink())
 				sinks.add(am);
 		}
+		calculateSourcesSinksEntrypoints(sources, sinks);
+	}
+	
+	public void calculateSourcesSinksEntrypoints
+			(String sinksFile, String sourcesFile) throws IOException, XmlPullParserException {
+		Set<CATEGORY> allCategories = Sets.newHashSet(CATEGORY.values());
+		
+		Set<AndroidMethod> sources = 
+		    new CategorizedAndroidSourceSinkParser(allCategories,  sourcesFile, /* is sources */ true, false)
+		        .parse();
+		Set<AndroidMethod> sinks = 
+		    new CategorizedAndroidSourceSinkParser(allCategories,  sinksFile, false, /* is sinks */ true)
+		        .parse();
 		calculateSourcesSinksEntrypoints(sources, sinks);
 	}
 	
